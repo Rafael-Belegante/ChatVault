@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>ChatVault</title>
+  <style>
+    :root{
+      --bg:#f6f3fb;--surface:#fff;--text:#1d1726;--muted:#665c72;--border:#d9d1e3;
+      --primary:#6d28d9;--primary-soft:#f0e8ff;--accent:#f97316;--accent-soft:#fff0e5;
+      --hero-start:#4c1d95;--hero-end:#7c3aed;
+    }
+    *{box-sizing:border-box}
+    body{margin:0;background:var(--bg);color:var(--text);
+      font-family:"Segoe UI",system-ui,-apple-system,BlinkMacSystemFont,sans-serif;
+      line-height:1.55;padding:28px 16px 72px}
+    .bar{position:fixed;top:0;left:0;right:0;display:flex;justify-content:center;gap:10px;
+      padding:12px;background:color-mix(in srgb,var(--surface) 92%,transparent);
+      border-bottom:1px solid var(--border);backdrop-filter:blur(8px);z-index:5}
+    .bar button{border:1px solid var(--primary);background:var(--primary);color:#fff;
+      font:inherit;font-weight:700;font-size:14px;padding:9px 16px;border-radius:11px;cursor:pointer}
+    .bar button.ghost{background:var(--surface);color:var(--primary)}
+    .wrap{max-width:780px;margin:56px auto 0}
+    .conv{margin:0 auto 40px}
+    .conv h1{background:linear-gradient(135deg,var(--hero-start),var(--hero-end));color:#fff;
+      margin:0;padding:20px 22px;border-radius:16px 16px 0 0;font-size:23px}
+    .meta{margin:0 0 18px;padding:10px 22px;background:var(--surface);border:1px solid var(--border);
+      border-top:0;border-radius:0 0 16px 16px;color:var(--muted);font-size:13px}
+    .thread{display:flex;flex-direction:column;gap:14px}
+    .row{max-width:88%;padding:12px 15px;border-radius:16px;border:1px solid var(--border);background:var(--surface)}
+    .row.user{align-self:flex-end;background:var(--accent-soft);
+      border-color:color-mix(in srgb,var(--accent) 34%,var(--border));border-bottom-right-radius:5px}
+    .row.assistant{align-self:flex-start;background:var(--primary-soft);
+      border-color:color-mix(in srgb,var(--primary) 30%,var(--border));border-bottom-left-radius:5px}
+    .who{font-size:11px;font-weight:800;letter-spacing:.5px;text-transform:uppercase;margin-bottom:5px;opacity:.85}
+    .row.user .who{color:color-mix(in srgb,var(--accent) 80%,var(--text))}
+    .row.assistant .who{color:var(--primary)}
+    .msg{font-size:14.5px;white-space:pre-wrap;word-break:break-word}
+    .foot{text-align:center;color:var(--muted);font-size:12px;margin-top:28px}
+    @media print{
+      body{background:#fff;padding:0}
+      .bar{display:none}
+      .wrap{margin-top:0;max-width:none}
+      .row{break-inside:avoid}
+    }
+  </style>
+</head>
+<body>
+  <div class="bar" id="bar">
+    <button id="printBtn" type="button">Salvar como PDF</button>
+    <button id="closeBtn" class="ghost" type="button">Fechar</button>
+  </div>
+  <div class="wrap" id="doc"></div>
+  <script src="scripts/print-view.js"></script>
+</body>
+</html>

@@ -1,0 +1,288 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="color-scheme" content="light dark" />
+  <title>ChatVault</title>
+  <link rel="stylesheet" href="popup.css" />
+  <link rel="stylesheet" href="app.css" />
+</head>
+<body>
+  <div class="app-shell">
+    <header class="hero">
+      <div class="brand-row">
+        <span class="brand-mark" aria-hidden="true">
+          <svg viewBox="0 0 24 24"><path d="M21 11.5a8.38 8.38 0 0 1-8.5 8.5 8.5 8.5 0 0 1-3.8-.9L3 21l1.9-5.7A8.38 8.38 0 0 1 4 11.5 8.5 8.5 0 0 1 12.5 3 8.38 8.38 0 0 1 21 11.5z"/><path d="M9 10h6M9 13h4"/></svg>
+        </span>
+        <div class="brand-copy">
+          <h1>ChatVault</h1>
+          <p>Organize e exporte ChatGPT · Gemini · Grok</p>
+        </div>
+        <div class="hero-actions">
+          <button id="aboutBtn" class="hero-action-btn" type="button" title="Sobre o ChatVault" aria-label="Sobre o ChatVault">
+            <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 10v6M12 7h.01"/></svg>
+            <span>Sobre</span>
+          </button>
+          <button id="themeBtn" class="icon-btn hero-icon" type="button" title="Alternar tema" aria-label="Alternar tema">
+            <svg id="themeIcon" viewBox="0 0 24 24"></svg>
+          </button>
+        </div>
+      </div>
+
+      <section class="save-panel">
+        <label class="session-name-wrap">
+          <span>Nome da conversa</span>
+          <input id="sessionName" type="text" maxlength="120" placeholder="Ex.: Pesquisa sobre React" autocomplete="off" />
+        </label>
+        <button id="saveBtn" class="save-btn" type="button">
+          <svg viewBox="0 0 24 24"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><path d="M17 21v-8H7v8M7 3v5h8"/></svg>
+          Salvar conversa
+        </button>
+      </section>
+    </header>
+
+    <main class="content">
+      <div class="seg full view-switch" role="tablist">
+        <button id="tabConversas" class="active" type="button" role="tab">
+          <svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+          Conversas
+        </button>
+        <button id="tabModelos" type="button" role="tab">
+          <svg viewBox="0 0 24 24"><path d="M4 4h16v4H4zM4 12h10v8H4zM18 12h2v8h-2z"/></svg>
+          Modelos
+        </button>
+      </div>
+
+      <section id="viewConversas" style="display:flex;flex-direction:column;min-height:0;flex:1;">
+        <div id="siteNotice" class="notice hidden">
+          <svg viewBox="0 0 24 24"><path d="M12 9v4M12 17h.01"/><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/></svg>
+          <span id="siteNoticeText">Abra uma conversa no ChatGPT, Gemini ou Grok para poder salvá-la.</span>
+        </div>
+
+        <div class="stats-row">
+          <span class="stat"><strong id="statSessions">0</strong> conversas</span>
+          <span class="stat accent-stat"><strong id="statMessages">0</strong> mensagens</span>
+          <span id="siteBadge" class="site-badge"><span class="dot"></span><span id="siteBadgeText">—</span></span>
+        </div>
+
+        <div class="toolbar">
+          <label class="search-box">
+            <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+            <input id="search" type="search" placeholder="Buscar conversas..." autocomplete="off" />
+          </label>
+          <button id="sortBtn" class="icon-btn" type="button" title="Ordenar">
+            <svg viewBox="0 0 24 24"><path d="M3 6h18M6 12h12M10 18h4"/></svg>
+          </button>
+        </div>
+
+        <div id="sessionsList" class="sessions-list" aria-live="polite"></div>
+
+        <div id="sessionsEmpty" class="empty-state hidden">
+          <span class="empty-illustration">
+            <svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+          </span>
+          <h2>Nenhuma conversa salva</h2>
+          <p>Abra o ChatGPT, Gemini ou Grok e clique em <strong>Salvar conversa</strong>.</p>
+        </div>
+      </section>
+
+      <section id="viewModelos" style="display:none;flex-direction:column;min-height:0;flex:1;">
+        <div class="stats-row">
+          <span class="stat"><strong id="statTemplates">0</strong> modelos</span>
+          <span class="stat accent-stat">Cole prompts com 1 clique</span>
+        </div>
+        <div class="toolbar">
+          <label class="search-box">
+            <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+            <input id="searchTpl" type="search" placeholder="Buscar modelos..." autocomplete="off" />
+          </label>
+          <button id="newTplBtn" class="mini-btn" type="button" title="Novo modelo">
+            <svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg> Novo
+          </button>
+        </div>
+        <div id="templatesList" class="sessions-list"></div>
+        <div id="templatesEmpty" class="empty-state hidden">
+          <span class="empty-illustration">
+            <svg viewBox="0 0 24 24"><path d="M4 4h16v4H4zM4 12h10v8H4zM18 12h2v8h-2z"/></svg>
+          </span>
+          <h2>Nenhum modelo ainda</h2>
+          <p>Crie mensagens pré-configuradas para não reescrever sempre. Copie ou insira direto na caixa da IA.</p>
+        </div>
+      </section>
+    </main>
+
+    <footer class="bottom-bar" id="bottomBar">
+      <button id="exportSelBtn" class="primary-btn grow" type="button" disabled>
+        <svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M7 10l5 5 5-5M12 15V3"/></svg>
+        Exportar selecionadas <span id="selCount" class="count-pill hidden">0</span>
+      </button>
+      <button id="selectAllBtn" class="secondary-btn compact" type="button">Marcar todas</button>
+      <button id="clearAllBtn" class="secondary-btn compact danger-soft" type="button" title="Apagar todas as conversas">
+        <svg viewBox="0 0 24 24"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg>
+      </button>
+    </footer>
+  </div>
+
+  <div id="exportModal" class="modal-backdrop hidden" role="dialog" aria-modal="true">
+    <div class="modal-card export-card">
+      <div class="modal-head">
+        <div>
+          <h2 id="exportTitle">Exportar conversa</h2>
+          <p id="exportSub">Escolha o que incluir e o formato.</p>
+        </div>
+        <button class="icon-btn" data-close="exportModal" type="button" aria-label="Fechar">
+          <svg viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></svg>
+        </button>
+      </div>
+
+      <div class="export-controls">
+        <div class="control-block">
+          <span>Incluir mensagens de</span>
+          <div class="seg full" id="filterSeg">
+            <button data-filter="all" class="active" type="button">Tudo</button>
+            <button data-filter="user" type="button">Só você</button>
+            <button data-filter="assistant" type="button">Só a IA</button>
+          </div>
+        </div>
+        <div class="control-block">
+          <span>Formato</span>
+          <div class="seg full" id="formatSeg">
+            <button data-format="pdf" class="active" type="button">PDF</button>
+            <button data-format="md" type="button">Markdown</button>
+            <button data-format="html" type="button">HTML</button>
+            <button data-format="txt" type="button">TXT</button>
+          </div>
+        </div>
+      </div>
+
+      <div id="exportPreview" class="msg-preview"></div>
+
+      <div class="modal-foot export-foot">
+        <span id="exportCount">0 mensagens</span>
+        <div class="foot-actions">
+          <button class="secondary-btn compact" id="copyExportBtn" type="button">
+            <svg viewBox="0 0 24 24"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg>
+            Copiar
+          </button>
+          <button class="primary-btn" id="downloadExportBtn" type="button">
+            <svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M7 10l5 5 5-5M12 15V3"/></svg>
+            <span id="downloadBtnLabel">Baixar</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="tplModal" class="modal-backdrop hidden" role="dialog" aria-modal="true">
+    <div class="modal-card rename-card">
+      <div class="modal-head">
+        <div>
+          <h2 id="tplModalTitle">Novo modelo</h2>
+          <p>Mensagens reutilizáveis para acelerar seu uso.</p>
+        </div>
+        <button class="icon-btn" data-close="tplModal" type="button" aria-label="Fechar">
+          <svg viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></svg>
+        </button>
+      </div>
+      <div class="rename-body">
+        <div class="field">
+          <label for="tplTitle">Título</label>
+          <input id="tplTitle" type="text" maxlength="120" placeholder="Ex.: Revisar meu código" autocomplete="off" />
+        </div>
+        <div class="field" style="margin-bottom:0;">
+          <label for="tplBody">Texto do prompt</label>
+          <textarea id="tplBody" placeholder="Ex.: Revise o código abaixo apontando bugs, problemas de performance e melhorias de legibilidade."></textarea>
+          <span class="field-hint">Use <code>{{ }}</code> como marcador para trechos que você troca a cada uso.</span>
+        </div>
+      </div>
+      <div class="rename-actions">
+        <button class="secondary-btn" data-close="tplModal" type="button">Cancelar</button>
+        <button class="primary-btn" id="tplSaveBtn" type="button">Salvar modelo</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="renameModal" class="modal-backdrop hidden" role="dialog" aria-modal="true">
+    <div class="modal-card rename-card">
+      <div class="modal-head">
+        <div>
+          <h2>Renomear conversa</h2>
+          <p>Use um nome que ajude a encontrar depois.</p>
+        </div>
+        <button class="icon-btn" data-close="renameModal" type="button" aria-label="Fechar">
+          <svg viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></svg>
+        </button>
+      </div>
+      <div class="rename-body">
+        <label for="renameInput">Nome</label>
+        <input id="renameInput" type="text" maxlength="120" autocomplete="off" />
+      </div>
+      <div class="rename-actions">
+        <button class="secondary-btn" data-close="renameModal" type="button">Cancelar</button>
+        <button class="primary-btn" id="renameSaveBtn" type="button">Salvar</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="confirmModal" class="modal-backdrop hidden" role="dialog" aria-modal="true">
+    <div class="modal-card confirm-card">
+      <span class="confirm-icon">
+        <svg viewBox="0 0 24 24"><path d="M12 9v4M12 17h.01"/><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/></svg>
+      </span>
+      <h2 id="confirmTitle">Tem certeza?</h2>
+      <p id="confirmText">Esta ação não pode ser desfeita.</p>
+      <div class="confirm-actions">
+        <button class="secondary-btn" data-close="confirmModal" type="button">Cancelar</button>
+        <button class="danger-btn" id="confirmOkBtn" type="button">Confirmar</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="aboutModal" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="aboutTitle">
+    <div class="modal-card about-card">
+      <div class="modal-head about-head">
+        <div>
+          <div class="about-title-row">
+            <h2 id="aboutTitle">ChatVault</h2>
+            <span id="aboutVersion" class="version-pill">v1.0</span>
+          </div>
+          <p class="about-author">Criado por <strong>Rafael Belegante</strong></p>
+        </div>
+        <button id="closeAboutBtn" class="icon-btn" type="button" aria-label="Fechar">
+          <svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></svg>
+        </button>
+      </div>
+      <div class="about-body">
+        <p class="about-summary">O ChatVault salva as conversas abertas no ChatGPT, Gemini e Grok, separando o que é seu e o que é da IA. Filtre antes de exportar, gere PDF, Markdown, HTML ou TXT e guarde modelos de prompt reutilizáveis. Tudo fica no seu navegador.</p>
+
+        <button id="projectLinkBtn" class="about-link-card" type="button">
+          <span class="about-link-icon">
+            <svg viewBox="0 0 24 24"><path d="M14 5h5v5M19 5l-8 8"/><path d="M18 13v6H5V6h6"/></svg>
+          </span>
+          <span class="about-link-copy">
+            <strong>Verificar atualizações</strong>
+            <small>Confira se existe uma versão mais recente do ChatVault no GitHub.</small>
+          </span>
+          <svg class="about-link-arrow" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></svg>
+        </button>
+
+        <button id="profileLinkBtn" class="about-link-card" type="button">
+          <span class="about-link-icon accent">
+            <svg viewBox="0 0 24 24"><path d="M4 6h6l2 2h8v10H4z"/><path d="M8 12h8M8 15h5"/></svg>
+          </span>
+          <span class="about-link-copy">
+            <strong>Mais projetos</strong>
+            <small>Veja outros projetos e repositórios de Rafael Belegante no GitHub.</small>
+          </span>
+          <svg class="about-link-arrow" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></svg>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+  <script src="popup.js" type="module"></script>
+</body>
+</html>
