@@ -18,13 +18,13 @@ Extensão para Chrome e Edge que salva, organiza e exporta conversas do **ChatGP
 1. Baixe ou clone este repositório
 2. Acesse `chrome://extensions/`
 3. Ative o **Modo do desenvolvedor**
-4. Clique em **Carregar sem compactação** e selecione a pasta do SafeTabs
+4. Clique em **Carregar sem compactação** e selecione a pasta do ChatVault
 
 **Edge**
 1. Baixe ou clone este repositório
 2. Acesse `edge://extensions/`
 3. Ative o **Modo de desenvolvedor**
-4. Clique em **Carregar sem compactação** e selecione a pasta do SafeTabs
+4. Clique em **Carregar sem compactação** e selecione a pasta do ChatVault
 
 Depois é só abrir uma conversa no ChatGPT, Gemini ou Grok e usar o ícone da extensão.
 
@@ -37,8 +37,6 @@ A leitura do conteúdo é feita por `scripts/content.js`, que roda na página e 
 | ChatGPT | `[data-message-author-role]` + `.markdown`                               |
 | Gemini  | `user-query .query-text-line` e `model-response … div.markdown-main-panel` |
 | Grok    | `[data-testid="user-message"]` / `[data-testid="assistant-message"]` + `.response-content-markdown` |
-
-Se algum site alterar a marcação e a extração parar de funcionar, os seletores ficam concentrados nos `adapters` desse arquivo, fáceis de ajustar.
 
 ## Exportação em PDF
 
