@@ -1,6 +1,6 @@
 # ChatVault
 
-Extensão para Chrome e Edge que salva, organiza e exporta conversas do **ChatGPT**, **Gemini** e **Grok**. Separa o que é seu do que é da IA, deixa filtrar antes de exportar e guarda modelos de prompt para reaproveitar. Roda inteiramente no navegador — nada é enviado para nenhum servidor.
+Extensão para Chrome e Edge que salva, organiza e exporta conversas do **ChatGPT**, **Gemini** e **Grok**. Roda inteiramente no navegador, nada é enviado para nenhum servidor.
 
 ## Recursos
 
@@ -14,12 +14,17 @@ Extensão para Chrome e Edge que salva, organiza e exporta conversas do **ChatGP
 
 ## Instalação
 
-Enquanto não está publicada nas lojas, dá para rodar em modo desenvolvedor:
+**Chrome**
+1. Baixe ou clone este repositório
+2. Acesse `chrome://extensions/`
+3. Ative o **Modo do desenvolvedor**
+4. Clique em **Carregar sem compactação** e selecione a pasta do SafeTabs
 
-1. Baixe ou clone este repositório.
-2. Acesse `chrome://extensions` (ou `edge://extensions`).
-3. Ative o **Modo do desenvolvedor**.
-4. Clique em **Carregar sem compactação** e selecione a pasta do projeto.
+**Edge**
+1. Baixe ou clone este repositório
+2. Acesse `edge://extensions/`
+3. Ative o **Modo de desenvolvedor**
+4. Clique em **Carregar sem compactação** e selecione a pasta do SafeTabs
 
 Depois é só abrir uma conversa no ChatGPT, Gemini ou Grok e usar o ícone da extensão.
 
@@ -46,15 +51,31 @@ Tudo é guardado localmente em `chrome.storage.local`. Não há contas, telemetr
 ## Estrutura
 
 ```
-manifest.json          Manifest V3
-popup.html / popup.js  Interface e lógica do popup
-popup.css              Estilos base
-app.css                Componentes adicionais
-export.html            Página usada para gerar o PDF
-scripts/content.js     Leitura e inserção de texto por site
-scripts/print-view.js  Renderização da página de impressão
-icons/                 Ícones 16/32/48/128
+ChatVault/
+├── icons/
+│   ├── icon16.png
+│   ├── icon32.png
+│   ├── icon48.png
+│   └── icon128.png
+├── scripts/
+│   ├── content.js
+│   ├── print-view.js
+├── app.css
+├── export.html
+├── manifest.json
+├── popup.css
+├── popup.html
+├── popup.js
+└── README.md
 ```
+
+## Privacidade
+
+As sessões ficam apenas no perfil local do navegador. O ChatVault não tem servidor próprio, não envia URLs para serviços externos e não carrega código remoto. As permissões pedidas se limitam aos domínios do ChatGPT, Gemini e Grok, necessárias para ler a conversa aberta.
+
+## Compatibilidade
+
+Chrome e Edge com suporte a Manifest V3.
 
 ## Licença
 
