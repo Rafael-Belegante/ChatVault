@@ -15,6 +15,49 @@
   const textOf = (el) => (el ? clean(el.innerText) : "");
   const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 
+  function collectImages(root) {
+    const out = [];
+    const seen = new Set();
+    for (const im of root.querySelectorAll("img")) {
+      const src = im.currentSrc || im.getAttribute("src") || "";
+      if (!/^https?:\/\//.test(src)) continue;
+      if (/s2\/favicons|\/favicon|sprites?-|\.svg(\?|$)/i.test(src)) continue;
+      const w = im.naturalWidth || parseInt(im.getAttribute("width") || "0", 10) || 0;
+      if (w && w < 150) continue;
+      if (seen.has(src)) continue;
+      seen.add(src);
+      out.push({ src, alt: im.getAttribute("alt") || "" });
+    }
+    return out;
+  }
+
+  async function toDataUrl(src) {
+    try {
+      const r = await fetch(src, { credentials: "include" });
+      if (!r.ok) return null;
+      const blob = await r.blob();
+      if (!/^image\//.test(blob.type)) return null;
+      if (blob.size > 6000000) return null;
+      return await new Promise((res, rej) => {
+        const fr = new FileReader();
+        fr.onload = () => res(fr.result);
+        fr.onerror = () => rej();
+        fr.readAsDataURL(blob);
+      });
+    } catch (_) {
+      return null;
+    }
+  }
+
+  async function resolveImages(messages) {
+    const all = [];
+    for (const m of messages) for (const im of m.images || []) all.push(im);
+    const uniq = [...new Set(all.map((i) => i.src))];
+    const cache = new Map();
+    await Promise.all(uniq.map(async (src) => cache.set(src, await toDataUrl(src))));
+    for (const im of all) im.data = cache.get(im.src) || null;
+  }
+
   function findScroller() {
     let best = null, bestH = 0;
     for (const el of document.querySelectorAll("main *, body > div *")) {
@@ -26,87 +69,95 @@
     return best || document.scrollingElement || document.documentElement;
   }
 
-  async function autoScroll(countFn) {
-    const sc = findScroller();
-    let last = -1, stable = 0, guard = 0;
-    while (guard++ < 80) {
+  async function scrollToTop(sc) {
+    let last = -1, still = 0;
+    for (let i = 0; i < 100; i++) {
       sc.scrollTop = 0;
-      await wait(220);
-      const c = countFn();
-      if (c === last) { if (++stable >= 3) break; } else { stable = 0; last = c; }
+      await wait(150);
+      if (sc.scrollTop <= 2) {
+        if (sc.scrollHeight === last) { if (++still >= 2) break; }
+        else { still = 0; last = sc.scrollHeight; }
+      }
     }
-    sc.scrollTop = sc.scrollHeight;
-    await wait(180);
   }
 
-  function dedupe(list) {
-    const out = [];
-    for (const m of list) {
-      if (!m.text) continue;
-      const prev = out[out.length - 1];
-      if (prev && prev.role === m.role && prev.text === m.text) continue;
-      out.push(m);
-    }
-    return out;
-  }
+  const hashItem = (it) =>
+    `${it.role}|${(it.text || "").slice(0, 180)}|${(it.images || []).map((i) => i.src).join(",")}`;
 
   const adapters = {
     chatgpt: {
       match: (h) => /(^|\.)chatgpt\.com$|(^|\.)chat\.openai\.com$/.test(h),
       label: "ChatGPT",
-      count: () => document.querySelectorAll("[data-message-author-role]").length,
-      extract() {
-        let nodes = [...document.querySelectorAll("[data-message-author-role]")];
-        if (nodes.length) {
-          return nodes
-            .map((n) => ({
-              role: n.getAttribute("data-message-author-role"),
-              text: textOf(n.querySelector(".markdown") || n),
-            }))
-            .filter((m) => m.role === "user" || m.role === "assistant");
+      items() {
+        const turns = [...document.querySelectorAll('[data-testid^="conversation-turn"]')];
+        if (turns.length) {
+          const res = [];
+          for (const turn of turns) {
+            let role = turn.getAttribute("data-turn");
+            const roleEl = turn.querySelector("[data-message-author-role]");
+            if (role !== "user" && role !== "assistant") role = roleEl?.getAttribute("data-message-author-role");
+            if (role !== "user" && role !== "assistant") continue;
+            let text = "";
+            const md = turn.querySelector(".markdown");
+            if (md) {
+              text = textOf(md);
+            } else {
+              const parts = [...turn.querySelectorAll(
+                '[data-testid="collapsible-user-message-content"] .whitespace-pre-wrap, [data-message-author-role="user"] .whitespace-pre-wrap'
+              )];
+              if (parts.length) text = clean(parts.map((p) => p.innerText).join("\n"));
+              else if (roleEl) text = textOf(roleEl);
+            }
+            res.push({ id: turn.getAttribute("data-turn-id") || "", role, text, images: collectImages(turn) });
+          }
+          return res;
         }
-        nodes = [...document.querySelectorAll('[data-testid^="conversation-turn"]')];
-        return nodes.map((n) => ({
-          role: n.querySelector(".markdown") ? "assistant" : "user",
-          text: textOf(n),
-        }));
+        return [...document.querySelectorAll("[data-message-author-role]")]
+          .map((n) => ({
+            id: n.getAttribute("data-message-id") || "",
+            role: n.getAttribute("data-message-author-role"),
+            text: textOf(n.querySelector(".markdown") || n.querySelector(".whitespace-pre-wrap") || n),
+            images: collectImages(n),
+          }))
+          .filter((m) => m.role === "user" || m.role === "assistant");
       },
     },
 
     gemini: {
       match: (h) => /(^|\.)gemini\.google\.com$/.test(h),
       label: "Gemini",
-      count: () => document.querySelectorAll("user-query, model-response").length,
-      extract() {
+      items() {
         const els = [...document.querySelectorAll("user-query, model-response")];
-        if (!els.length) return [];
         return els.map((el) => {
-          if (el.tagName.toLowerCase() === "user-query") {
+          const isUser = el.tagName.toLowerCase() === "user-query";
+          let text = "";
+          if (isUser) {
             const q = el.querySelector(".query-text");
-            let text = "";
             if (q) {
               const lines = [...q.querySelectorAll(".query-text-line")];
               if (lines.length) {
                 text = lines.map((l) => l.innerText).join("\n");
               } else {
-                const clone = q.cloneNode(true);
-                clone.querySelectorAll(".cdk-visually-hidden, .screen-reader-user-query-label")
-                  .forEach((n) => n.remove());
-                text = clone.innerText;
+                const c = q.cloneNode(true);
+                c.querySelectorAll(".cdk-visually-hidden, .screen-reader-user-query-label").forEach((n) => n.remove());
+                text = c.innerText;
               }
             } else {
               text = textOf(el);
             }
-            return { role: "user", text: clean(text) };
+          } else {
+            const md =
+              el.querySelector("message-content div.markdown.markdown-main-panel") ||
+              el.querySelector("message-content div.markdown") ||
+              el.querySelector(".markdown.markdown-main-panel") ||
+              el.querySelector("div.response-content") ||
+              el.querySelector("message-content") ||
+              el;
+            text = textOf(md);
           }
-          const md =
-            el.querySelector("message-content div.markdown.markdown-main-panel") ||
-            el.querySelector("message-content div.markdown") ||
-            el.querySelector(".markdown.markdown-main-panel") ||
-            el.querySelector("div.response-content") ||
-            el.querySelector("message-content") ||
-            el;
-          return { role: "assistant", text: textOf(md) };
+          const role = isUser ? "user" : "assistant";
+          const cont = el.closest(".conversation-container");
+          return { id: cont?.id ? cont.id + ":" + role : "", role, text: clean(text), images: collectImages(el) };
         });
       },
     },
@@ -114,30 +165,26 @@
     grok: {
       match: (h) => /(^|\.)grok\.com$/.test(h) || (/(^|\.)x\.com$/.test(h) && /\/i\/grok/.test(location.pathname)),
       label: "Grok",
-      count: () =>
-        (document.querySelectorAll('[data-testid="user-message"], [data-testid="assistant-message"]').length ||
-          document.querySelectorAll(".message-bubble, [class*='message-bubble']").length),
-      extract() {
-        let bubbles = [...document.querySelectorAll(
-          '[data-testid="user-message"], [data-testid="assistant-message"]'
-        )].filter(visible);
+      items() {
+        let bubbles = [...document.querySelectorAll('[data-testid="user-message"], [data-testid="assistant-message"]')].filter(visible);
         if (bubbles.length) {
-          return bubbles.map((b) => ({
-            role: b.getAttribute("data-testid") === "user-message" ? "user" : "assistant",
-            text: textOf(b.querySelector(".response-content-markdown") || b.querySelector(".markdown, .prose") || b),
-          }));
+          return bubbles.map((b) => {
+            const role = b.getAttribute("data-testid") === "user-message" ? "user" : "assistant";
+            const md = b.querySelector(".response-content-markdown") || b.querySelector(".markdown, .prose") || b;
+            const wrap = b.closest('[id^="response-"]');
+            return { id: wrap?.id || "", role, text: textOf(md), images: collectImages(b) };
+          });
         }
-
         bubbles = [...document.querySelectorAll(".message-bubble, [class*='message-bubble']")].filter(visible);
         if (bubbles.length) {
           return bubbles.map((b, i) => ({
-            role: roleByAlignment(b, i),
+            id: "", role: roleByAlignment(b, i),
             text: textOf(b.querySelector(".response-content-markdown, .markdown, .prose") || b),
+            images: collectImages(b),
           }));
         }
-
-        const md = [...document.querySelectorAll("[class*='response-content-markdown'], .prose")].filter(visible);
-        return md.map((el, i) => ({ role: i % 2 === 0 ? "user" : "assistant", text: textOf(el) }));
+        return [...document.querySelectorAll("[class*='response-content-markdown'], .prose")].filter(visible)
+          .map((el, i) => ({ id: "", role: i % 2 === 0 ? "user" : "assistant", text: textOf(el), images: collectImages(el) }));
       },
     },
   };
@@ -154,9 +201,7 @@
 
   function currentAdapter() {
     const h = location.hostname;
-    for (const key of Object.keys(adapters)) {
-      if (adapters[key].match(h)) return adapters[key];
-    }
+    for (const key of Object.keys(adapters)) if (adapters[key].match(h)) return adapters[key];
     return null;
   }
 
@@ -185,22 +230,74 @@
     async extract() {
       const a = currentAdapter();
       if (!a) return { ok: false, reason: "unsupported" };
-      try { await autoScroll(a.count); } catch (_) {}
 
-      let messages = [];
-      try { messages = a.extract() || []; } catch (_) { messages = []; }
-      messages = dedupe(messages.map((m) => ({
-        role: m.role === "user" ? "user" : "assistant",
-        text: clean(m.text),
-      })));
+      const sc = findScroller();
+      const map = new Map();
+      let order = 0;
+      const harvest = () => {
+        let items = [];
+        try { items = a.items() || []; } catch (_) {}
+        for (const it of items) {
+          if (it.role !== "user" && it.role !== "assistant") continue;
+          const id = it.id || hashItem(it);
+          const prev = map.get(id);
+          if (!prev) {
+            it._o = order++;
+            map.set(id, it);
+          } else if ((it.text || "").length > (prev.text || "").length || (it.images || []).length > (prev.images || []).length) {
+            it._o = prev._o;
+            map.set(id, it);
+          }
+        }
+      };
+
+      try {
+        await scrollToTop(sc);
+        harvest();
+        let guard = 0, stuck = 0;
+        while (guard++ < 600) {
+          harvest();
+          const atBottom = sc.scrollTop + sc.clientHeight >= sc.scrollHeight - 4;
+          if (atBottom) break;
+          const before = sc.scrollTop;
+          sc.scrollTop = Math.min(sc.scrollHeight, sc.scrollTop + Math.max(200, sc.clientHeight * 0.85));
+          await wait(150);
+          if (sc.scrollTop === before) { if (++stuck >= 3) break; } else stuck = 0;
+        }
+        harvest();
+      } catch (_) {
+        harvest();
+      }
+
+      let messages = [...map.values()]
+        .sort((x, y) => x._o - y._o)
+        .map((m) => ({ role: m.role === "user" ? "user" : "assistant", text: clean(m.text), images: m.images || [] }))
+        .filter((m) => m.text || (m.images && m.images.length));
+
+      const dedup = [];
+      for (const m of messages) {
+        const prev = dedup[dedup.length - 1];
+        const sameImgs = prev && JSON.stringify((prev.images || []).map((i) => i.src)) === JSON.stringify((m.images || []).map((i) => i.src));
+        if (prev && prev.role === m.role && prev.text === m.text && sameImgs) continue;
+        dedup.push(m);
+      }
+      messages = dedup;
+
+      await resolveImages(messages);
+      messages = messages.map((m) => ({
+        role: m.role,
+        text: m.text,
+        images: (m.images || []).map((i) => ({ src: i.data || i.src, alt: i.alt || "" })),
+      }));
 
       const title =
         (document.title || "").replace(/\s*[-–|]\s*(ChatGPT|Gemini|Grok).*$/i, "").trim() ||
         a.label + " — conversa";
 
+      const hasContent = messages.some((m) => m.text || m.images.length);
       return {
-        ok: messages.length > 0,
-        reason: messages.length ? null : "empty",
+        ok: hasContent,
+        reason: hasContent ? null : "empty",
         site: a.label,
         title,
         url: location.href,

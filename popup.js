@@ -427,10 +427,15 @@ function renderExportPreview() {
     total += msgs.length;
     const header = state.exportTargets.length > 1
       ? `<div class="preview-empty" style="padding:6px 0;text-align:left;font-weight:750;color:var(--text)">${esc(s.name)}</div>` : "";
-    const bubbles = msgs.map((m) => `
+    const bubbles = msgs.map((m) => {
+      const imgs = (m.images || []).length
+        ? `<div class="bubble-imgs">${m.images.map((im) => `<img src="${esc(im.src)}" alt="${esc(im.alt || "")}">`).join("")}</div>`
+        : "";
+      return `
       <div class="bubble ${m.role}">
-        <span class="who">${esc(whoLabel(m.role, s.site))}</span>${esc(m.text)}
-      </div>`).join("");
+        <span class="who">${esc(whoLabel(m.role, s.site))}</span>${esc(m.text)}${imgs}
+      </div>`;
+    }).join("");
     return header + (bubbles || `<div class="preview-empty">Nenhuma mensagem com este filtro.</div>`);
   });
   box.innerHTML = parts.join("") || `<div class="preview-empty">Nada para mostrar.</div>`;
@@ -452,8 +457,10 @@ function buildMarkdown(sessions) {
   return sessions.map((s) => {
     const msgs = filterMessages(s.messages);
     const head = `# ${s.name}\n\n> **${s.site}** · ${fmtDate(s.createdAt)} · ${msgs.length} mensagens  \n> ${s.url}\n`;
-    const body = msgs.map((m) =>
-      `\n## ${m.role === "user" ? "🧑 Você" : "🤖 " + s.site}\n\n${m.text}\n`).join("");
+    const body = msgs.map((m) => {
+      const imgs = (m.images || []).map((im) => `\n![${im.alt || "imagem"}](${im.src})\n`).join("");
+      return `\n## ${m.role === "user" ? "🧑 Você" : "🤖 " + s.site}\n\n${m.text}\n${imgs}`;
+    }).join("");
     return head + body;
   }).join("\n\n---\n\n");
 }
@@ -461,18 +468,26 @@ function buildTxt(sessions) {
   return sessions.map((s) => {
     const msgs = filterMessages(s.messages);
     const head = `${s.name}\n${s.site} · ${fmtDate(s.createdAt)} · ${msgs.length} mensagens\n${"=".repeat(48)}\n`;
-    const body = msgs.map((m) => `\n[${whoLabel(m.role, s.site).toUpperCase()}]\n${m.text}\n`).join("");
+    const body = msgs.map((m) => {
+      const imgs = (m.images || []).map((im) => `\n[IMAGEM${im.alt ? ": " + im.alt : ""}]`).join("");
+      return `\n[${whoLabel(m.role, s.site).toUpperCase()}]\n${m.text}${imgs}\n`;
+    }).join("");
     return head + body;
   }).join("\n\n" + "-".repeat(48) + "\n\n");
 }
 function buildHtml(sessions) {
   const blocks = sessions.map((s) => {
     const msgs = filterMessages(s.messages);
-    const rows = msgs.map((m) => `
+    const rows = msgs.map((m) => {
+      const imgs = (m.images || []).length
+        ? `<div class="imgs">${m.images.map((im) => `<img src="${esc(im.src)}" alt="${esc(im.alt || "")}">`).join("")}</div>`
+        : "";
+      return `
       <div class="row ${m.role}">
         <div class="who">${esc(whoLabel(m.role, s.site))}</div>
-        <div class="msg">${esc(m.text).replace(/\n/g, "<br>")}</div>
-      </div>`).join("");
+        <div class="msg">${esc(m.text).replace(/\n/g, "<br>")}</div>${imgs}
+      </div>`;
+    }).join("");
     return `<section class="conv">
       <h1>${esc(s.name)}</h1>
       <p class="meta">${esc(s.site)} · ${fmtDate(s.createdAt)} · ${msgs.length} mensagens</p>
@@ -485,27 +500,31 @@ function buildHtml(sessions) {
 <title>${esc(sessions[0]?.name || "Conversa")}</title>
 <style>
   :root{--bg:#f6f3fb;--surface:#fff;--text:#1d1726;--muted:#665c72;--border:#d9d1e3;
-    --primary:#6d28d9;--primary-soft:#f0e8ff;--accent:#f97316;--accent-soft:#fff0e5;
+    --primary:#6d28d9;--primary-soft:#f0e8ff;--primary-border:#c9b6f2;
+    --accent:#f97316;--accent-soft:#fff0e5;--accent-border:#f6c39a;
     --hero-start:#4c1d95;--hero-end:#7c3aed;}
-  @media(prefers-color-scheme:dark){:root{--bg:#0e0b13;--surface:#19131f;--text:#fbf8ff;
-    --muted:#c0b5ca;--border:#493a58;--primary:#a678ff;--primary-soft:#2d2042;
-    --accent:#ff9a3d;--accent-soft:#3d2817;--hero-start:#2e145c;--hero-end:#6f2ab1;}}
   *{box-sizing:border-box}
   body{margin:0;background:var(--bg);color:var(--text);
-    font-family:"Segoe UI",system-ui,-apple-system,sans-serif;line-height:1.55;padding:32px 16px 64px}
-  .conv{max-width:760px;margin:0 auto 40px}
+    font-family:"Segoe UI Variable Text","Segoe UI",system-ui,-apple-system,sans-serif;line-height:1.55;padding:32px 16px 64px;
+    -webkit-print-color-adjust:exact;print-color-adjust:exact}
+  .conv{max-width:760px;margin:0 auto 34px}
   h1{background:linear-gradient(135deg,var(--hero-start),var(--hero-end));color:#fff;
-    margin:0;padding:20px 22px;border-radius:16px 16px 0 0;font-size:22px}
-  .meta{margin:0 0 18px;padding:10px 22px;background:var(--surface);border:1px solid var(--border);
+    margin:0;padding:18px 22px;border-radius:16px 16px 0 0;font-size:22px}
+  .meta{margin:0 0 20px;padding:10px 22px;background:var(--surface);border:1px solid var(--border);
     border-top:0;border-radius:0 0 16px 16px;color:var(--muted);font-size:13px}
   .thread{display:flex;flex-direction:column;gap:14px}
-  .row{max-width:88%;padding:12px 15px;border-radius:16px;border:1px solid var(--border);background:var(--surface)}
-  .row.user{align-self:flex-end;background:var(--accent-soft);border-color:color-mix(in srgb,var(--accent) 34%,var(--border));border-bottom-right-radius:5px}
-  .row.assistant{align-self:flex-start;background:var(--primary-soft);border-color:color-mix(in srgb,var(--primary) 30%,var(--border));border-bottom-left-radius:5px}
-  .who{font-size:11px;font-weight:800;letter-spacing:.5px;text-transform:uppercase;margin-bottom:5px;opacity:.85}
-  .row.user .who{color:color-mix(in srgb,var(--accent) 80%,var(--text))}
+  .row{max-width:86%;padding:12px 15px;border-radius:16px;border:1px solid var(--border);background:var(--surface)}
+  .row.user{margin-left:auto;background:var(--accent-soft);border-color:var(--accent-border);border-bottom-right-radius:5px}
+  .row.assistant{margin-right:auto;background:var(--primary-soft);border-color:var(--primary-border);border-bottom-left-radius:5px}
+  .who{font-size:11px;font-weight:800;letter-spacing:.5px;text-transform:uppercase;margin-bottom:5px}
+  .row.user .who{color:#c2410c}
   .row.assistant .who{color:var(--primary)}
   .msg{font-size:14.5px;white-space:pre-wrap;word-break:break-word}
+  .msg:empty{display:none}
+  .imgs{display:flex;flex-direction:column;gap:8px;margin-top:8px}
+  .imgs img{max-width:100%;height:auto;border-radius:12px;border:1px solid var(--border);display:block}
+  @page{size:A4;margin:14mm}
+  @media print{.row{break-inside:avoid}}
 </style></head><body>${blocks}
 <p style="text-align:center;color:var(--muted);font-size:12px">Exportado com ChatVault</p>
 </body></html>`;
@@ -525,7 +544,7 @@ async function openPrintView(sessions) {
     title: sessions.length === 1 ? sessions[0].name : `${sessions.length} conversas`,
     sessions: sessions.map((s) => ({
       name: s.name, site: s.site, date: fmtDate(s.createdAt),
-      messages: filterMessages(s.messages).map((m) => ({ role: m.role, text: m.text })),
+      messages: filterMessages(s.messages).map((m) => ({ role: m.role, text: m.text, images: m.images || [] })),
     })),
   };
   await chrome.storage.local.set({ [PRINT_KEY]: payload });

@@ -5,6 +5,7 @@ Extensão para Chrome e Edge que salva, organiza e exporta conversas do **ChatGP
 ## Recursos
 
 - Salvar a conversa aberta na aba, com rolagem automática para carregar o histórico completo.
+- Captura também as imagens da conversa (embutidas no salvamento, para funcionarem offline nos exports).
 - Nome da conversa já pré-preenchido com o título da aba.
 - Filtro antes de exportar: tudo, só suas mensagens ou só as da IA.
 - Exportação em **PDF**, **Markdown**, **HTML** e **TXT**, com usuário e IA separados visualmente.
