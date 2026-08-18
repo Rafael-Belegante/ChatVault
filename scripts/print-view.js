@@ -19,19 +19,36 @@ function renderMessage(message, site) {
   article.appendChild(head);
 
   const text = typeof message.text === "string" ? message.text : "";
+  const images = Array.isArray(message.images) ? message.images : [];
+
   if (text.trim()) {
     article.appendChild(el("div", "message-text", text));
-  } else if (!(message.images || []).length) {
+  } else if (!images.length) {
     article.appendChild(el("div", "message-text message-placeholder", "Mensagem sem texto"));
   }
 
-  if ((message.images || []).length) {
-    const attachments = el("div", "attachment-list");
-    for (const image of message.images) {
+  if (images.length) {
+    const gallery = el("div", "image-gallery");
+    for (const image of images) {
+      const figure = el("figure", "image-card");
+      const src = typeof image?.src === "string" ? image.src : "";
       const alt = typeof image?.alt === "string" ? image.alt.trim() : "";
-      attachments.appendChild(el("span", "attachment", alt ? `IMAGEM · ${alt}` : "IMAGEM"));
+
+      if (src) {
+        const img = document.createElement("img");
+        img.className = "message-image";
+        img.src = src;
+        img.alt = alt || "Imagem da conversa";
+        img.loading = "eager";
+        figure.appendChild(img);
+      } else {
+        figure.appendChild(el("div", "image-missing", "Imagem indisponível"));
+      }
+
+      if (alt) figure.appendChild(el("figcaption", "image-caption", alt));
+      gallery.appendChild(figure);
     }
-    article.appendChild(attachments);
+    article.appendChild(gallery);
   }
 
   return article;
@@ -64,7 +81,7 @@ function renderConversation(session, index, total) {
   section.appendChild(messages);
 
   const footer = el("footer", "conversation-footer");
-  footer.appendChild(el("span", "", "Conteúdo exportado em formato textual"));
+  footer.appendChild(el("span", "", "Conteúdo exportado a partir dos dados da conversa"));
   footer.appendChild(el("span", "", "ChatVault"));
   section.appendChild(footer);
 

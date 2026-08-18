@@ -81,6 +81,21 @@
       border:1px dashed #cfc6d9;border-radius:9px;background:#faf9fb;color:var(--muted);
       padding:6px 9px;font-size:10.5px;font-weight:650;overflow-wrap:anywhere;
     }
+    .image-gallery{display:flex;flex-direction:column;gap:12px;margin-top:12px}
+    .image-card{
+      margin:0;border:1px solid var(--border);border-radius:16px;background:#fff;overflow:hidden;
+      box-shadow:0 6px 18px rgba(36,24,48,.08);break-inside:avoid-page;
+    }
+    .message.user .image-card{background:#fffaf6}
+    .message-image{display:block;width:100%;height:auto;max-width:100%;background:#f2eef7}
+    .image-caption{
+      margin:0;padding:10px 12px 12px;color:var(--muted);font-size:10.5px;line-height:1.45;
+      border-top:1px solid #ece8f0;white-space:pre-wrap;overflow-wrap:anywhere;
+    }
+    .image-missing{
+      display:flex;align-items:center;justify-content:center;min-height:160px;padding:18px;
+      color:var(--muted);font-size:11px;font-weight:700;background:#faf9fb;
+    }
     .conversation-footer{
       display:flex;justify-content:space-between;gap:12px;padding:11px 30px 13px;
       border-top:1px solid var(--border);color:var(--muted);font-size:9.5px;
@@ -105,6 +120,8 @@
       .message-head{break-after:avoid}
       .role-badge,.meta-chip,.attachment{-webkit-print-color-adjust:exact;print-color-adjust:exact}
       .message-text{font-size:10.6pt;line-height:1.48}
+      .image-card{box-shadow:none;break-inside:avoid;page-break-inside:avoid}
+      .message-image{max-height:230mm;object-fit:contain}
       .conversation-footer{padding:10px 0 0;font-size:8.5pt}
     }
   </style>

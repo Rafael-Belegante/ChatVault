@@ -602,7 +602,10 @@ function buildPdfPayload(sessions) {
         messages: msgs.map((m) => ({
           role: m.role === "user" ? "user" : "assistant",
           text: normalizeText(m.text),
-          images: (m.images || []).map((im) => ({ alt: normalizeText(im.alt) })),
+          images: (m.images || []).map((im) => ({
+            src: typeof im?.src === "string" ? im.src : "",
+            alt: normalizeText(im.alt),
+          })),
         })),
       };
     }),
