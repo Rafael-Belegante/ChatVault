@@ -41,7 +41,7 @@ A leitura do conteúdo é feita por `scripts/content.js`, que roda na página e 
 
 ## Exportação em PDF
 
-O PDF é gerado a partir do mesmo HTML usado no export `.html`: a extensão abre `export.html`, monta a conversa formatada e chama o diálogo de impressão do navegador. Basta escolher "Salvar como PDF". Isso mantém o texto selecionável e evita dependências externas.
+O PDF usa dados textuais próprios, separados do export `.html`. A extensão envia para a visualização de impressão apenas papel da mensagem, texto e marcadores de imagem; `print-view.js` monta um layout de documento com cabeçalho, metadados e blocos visuais de usuário/sistema usando `textContent`, preservando as quebras de linha. Imagens continuam sem ser renderizadas no PDF e aparecem apenas como marcadores textuais.
 
 ## Privacidade
 

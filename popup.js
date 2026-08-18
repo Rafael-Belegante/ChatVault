@@ -475,6 +475,50 @@ function buildTxt(sessions) {
     return head + body;
   }).join("\n\n" + "-".repeat(48) + "\n\n");
 }
+function buildPdfText(sessions) {
+  const divider = "-".repeat(72);
+  const sectionDivider = "=".repeat(72);
+
+  const normalizeText = (value) => String(value || "")
+    .replace(/\r\n?/g, "\n")
+    .replace(/\u00a0/g, " ")
+    .trim();
+
+  return sessions.map((s) => {
+    const msgs = filterMessages(s.messages);
+    const lines = [
+      s.name,
+      `${s.site} · ${fmtDate(s.createdAt)} · ${msgs.length} mensagens`,
+      sectionDivider,
+      "",
+    ];
+
+    msgs.forEach((m, index) => {
+      const role = m.role === "user"
+        ? "USUÁRIO"
+        : `SISTEMA${s.site ? " - " + s.site.toUpperCase() : ""}`;
+
+      lines.push(`[${role}]`);
+
+      const text = normalizeText(m.text);
+      if (text) lines.push(text);
+
+      for (const im of m.images || []) {
+        const alt = normalizeText(im.alt);
+        lines.push(alt ? `[IMAGEM: ${alt}]` : "[IMAGEM]");
+      }
+
+      if (!text && !(m.images || []).length) lines.push("[MENSAGEM SEM TEXTO]");
+
+      if (index < msgs.length - 1) {
+        lines.push("", divider, "");
+      }
+    });
+
+    return lines.join("\n").trimEnd();
+  }).join(`\n\n${sectionDivider}\n\n`);
+}
+
 function buildHtml(sessions) {
   const blocks = sessions.map((s) => {
     const msgs = filterMessages(s.messages);
@@ -539,15 +583,34 @@ function download(filename, text, mime) {
   setTimeout(() => URL.revokeObjectURL(url), 1500);
 }
 
-async function openPrintView(sessions) {
-  const payload = {
+function buildPdfPayload(sessions) {
+  const normalizeText = (value) => String(value || "")
+    .replace(/\r\n?/g, "\n")
+    .replace(/\u00a0/g, " ")
+    .trim();
+
+  return {
     title: sessions.length === 1 ? sessions[0].name : `${sessions.length} conversas`,
-    sessions: sessions.map((s) => ({
-      name: s.name, site: s.site, date: fmtDate(s.createdAt),
-      messages: filterMessages(s.messages).map((m) => ({ role: m.role, text: m.text, images: m.images || [] })),
-    })),
+    sessions: sessions.map((s) => {
+      const msgs = filterMessages(s.messages);
+      return {
+        name: s.name,
+        site: s.site,
+        createdAt: s.createdAt,
+        dateLabel: fmtDate(s.createdAt),
+        messageCount: msgs.length,
+        messages: msgs.map((m) => ({
+          role: m.role === "user" ? "user" : "assistant",
+          text: normalizeText(m.text),
+          images: (m.images || []).map((im) => ({ alt: normalizeText(im.alt) })),
+        })),
+      };
+    }),
   };
-  await chrome.storage.local.set({ [PRINT_KEY]: payload });
+}
+
+async function openPrintView(sessions) {
+  await chrome.storage.local.set({ [PRINT_KEY]: buildPdfPayload(sessions) });
   await chrome.tabs.create({ url: chrome.runtime.getURL("export.html") });
 }
 
@@ -568,7 +631,9 @@ $("#downloadExportBtn").addEventListener("click", async () => {
 $("#copyExportBtn").addEventListener("click", async () => {
   const t = state.exportTargets;
   const text = state.exportFormat === "html" ? buildHtml(t)
-    : state.exportFormat === "txt" ? buildTxt(t) : buildMarkdown(t);
+    : state.exportFormat === "txt" ? buildTxt(t)
+    : state.exportFormat === "pdf" ? buildPdfText(t)
+    : buildMarkdown(t);
   try { await navigator.clipboard.writeText(text); toast("Copiado para a área de transferência.", "success"); }
   catch { toast("Não consegui copiar.", "error"); }
 });

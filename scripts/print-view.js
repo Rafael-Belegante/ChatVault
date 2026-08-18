@@ -1,42 +1,93 @@
 const PRINT_KEY = "chatvault.print";
 
-const esc = (s) => (s || "").replace(/[&<>"']/g, (c) =>
-  ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
-
-function render(payload) {
-  const { title, sessions } = payload;
-  document.title = title ? `${title} — ChatVault` : "ChatVault";
-
-  const doc = document.getElementById("doc");
-  doc.innerHTML = sessions.map((s) => {
-    const rows = s.messages.map((m) => {
-      const who = m.role === "user" ? "Você" : (s.site || "IA");
-      const imgs = (m.images || []).length
-        ? `<div class="imgs">${m.images.map((im) =>
-            `<img src="${esc(im.src)}" alt="${esc(im.alt || "")}">`).join("")}</div>`
-        : "";
-      return `<div class="row ${m.role === "user" ? "user" : "assistant"}">
-        <div class="who">${esc(who)}</div>
-        <div class="msg">${esc(m.text).replace(/\n/g, "<br>")}</div>${imgs}
-      </div>`;
-    }).join("");
-    return `<section class="conv">
-      <h1>${esc(s.name)}</h1>
-      <p class="meta">${esc(s.site)} · ${esc(s.date)} · ${s.messages.length} mensagens</p>
-      <div class="thread">${rows}</div>
-    </section>`;
-  }).join("") + `<p class="foot">Exportado com ChatVault</p>`;
+function el(tag, className, text) {
+  const node = document.createElement(tag);
+  if (className) node.className = className;
+  if (text !== undefined && text !== null) node.textContent = String(text);
+  return node;
 }
 
-function waitForImages(timeout = 4000) {
-  const imgs = [...document.images].filter((im) => !im.complete);
-  if (!imgs.length) return Promise.resolve();
-  return new Promise((resolve) => {
-    let done = 0;
-    const finish = () => { if (++done >= imgs.length) resolve(); };
-    imgs.forEach((im) => { im.addEventListener("load", finish); im.addEventListener("error", finish); });
-    setTimeout(resolve, timeout);
+function roleLabel(message, site) {
+  return message.role === "user" ? "USUÁRIO" : "SISTEMA";
+}
+
+function renderMessage(message, site) {
+  const article = el("article", `message ${message.role === "user" ? "user" : "assistant"}`);
+  const head = el("div", "message-head");
+  head.appendChild(el("span", "role-badge", roleLabel(message, site)));
+  head.appendChild(el("span", "role-detail", message.role === "user" ? "Você" : (site || "Assistente")));
+  article.appendChild(head);
+
+  const text = typeof message.text === "string" ? message.text : "";
+  if (text.trim()) {
+    article.appendChild(el("div", "message-text", text));
+  } else if (!(message.images || []).length) {
+    article.appendChild(el("div", "message-text message-placeholder", "Mensagem sem texto"));
+  }
+
+  if ((message.images || []).length) {
+    const attachments = el("div", "attachment-list");
+    for (const image of message.images) {
+      const alt = typeof image?.alt === "string" ? image.alt.trim() : "";
+      attachments.appendChild(el("span", "attachment", alt ? `IMAGEM · ${alt}` : "IMAGEM"));
+    }
+    article.appendChild(attachments);
+  }
+
+  return article;
+}
+
+function renderConversation(session, index, total) {
+  const section = el("section", "conversation");
+  const header = el("header", "conversation-header");
+
+  const brandline = el("div", "brandline");
+  brandline.appendChild(el("span", "brandmark"));
+  brandline.appendChild(document.createTextNode("ChatVault · conversa exportada"));
+  header.appendChild(brandline);
+  header.appendChild(el("h1", "conversation-title", session.name || "Conversa"));
+
+  const meta = el("div", "meta");
+  meta.appendChild(el("span", "meta-chip", session.site || "Assistente"));
+  if (session.dateLabel) meta.appendChild(el("span", "meta-chip", session.dateLabel));
+  const count = Number.isFinite(session.messageCount) ? session.messageCount : (session.messages || []).length;
+  meta.appendChild(el("span", "meta-chip", `${count} ${count === 1 ? "mensagem" : "mensagens"}`));
+  if (total > 1) meta.appendChild(el("span", "meta-chip", `Conversa ${index + 1} de ${total}`));
+  header.appendChild(meta);
+  section.appendChild(header);
+
+  const messages = el("div", "messages");
+  for (const message of session.messages || []) {
+    if (message.role !== "user" && message.role !== "assistant") continue;
+    messages.appendChild(renderMessage(message, session.site));
+  }
+  section.appendChild(messages);
+
+  const footer = el("footer", "conversation-footer");
+  footer.appendChild(el("span", "", "Conteúdo exportado em formato textual"));
+  footer.appendChild(el("span", "", "ChatVault"));
+  section.appendChild(footer);
+
+  return section;
+}
+
+function render(payload) {
+  const title = payload?.title || "Conversa";
+  document.title = `${title} — ChatVault`;
+
+  const root = document.getElementById("document");
+  root.replaceChildren();
+
+  const sessions = Array.isArray(payload?.sessions) ? payload.sessions : [];
+  if (!sessions.length) {
+    root.appendChild(el("div", "empty", "Nada para exportar."));
+    return false;
+  }
+
+  sessions.forEach((session, index) => {
+    root.appendChild(renderConversation(session, index, sessions.length));
   });
+  return true;
 }
 
 async function start() {
@@ -46,19 +97,19 @@ async function start() {
     payload = data[PRINT_KEY];
   } catch (_) {}
 
-  if (!payload || !Array.isArray(payload.sessions) || !payload.sessions.length) {
-    document.getElementById("doc").innerHTML =
-      '<p style="text-align:center;color:#665c72">Nada para exportar.</p>';
+  const printBtn = document.getElementById("printBtn");
+  const closeBtn = document.getElementById("closeBtn");
+
+  printBtn.addEventListener("click", () => window.print());
+  closeBtn.addEventListener("click", () => window.close());
+
+  const ok = render(payload);
+  if (!ok) {
+    printBtn.disabled = true;
     return;
   }
 
-  render(payload);
   try { await chrome.storage.local.remove(PRINT_KEY); } catch (_) {}
-
-  document.getElementById("printBtn").addEventListener("click", () => window.print());
-  document.getElementById("closeBtn").addEventListener("click", () => window.close());
-
-  await waitForImages();
   setTimeout(() => window.print(), 250);
 }
 

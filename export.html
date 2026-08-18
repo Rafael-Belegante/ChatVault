@@ -6,64 +6,106 @@
   <title>ChatVault</title>
   <style>
     :root{
-      --bg:#f6f3fb; --surface:#ffffff; --text:#1d1726; --muted:#665c72; --border:#d9d1e3;
-      --primary:#6d28d9; --primary-soft:#f0e8ff; --primary-border:#c9b6f2;
-      --accent:#f97316; --accent-soft:#fff0e5; --accent-border:#f6c39a;
-      --hero-start:#4c1d95; --hero-end:#7c3aed;
+      --bg:#f5f3f8;
+      --paper:#ffffff;
+      --text:#201a29;
+      --muted:#71677c;
+      --border:#ddd7e5;
+      --primary:#6d28d9;
+      --primary-soft:#f5efff;
+      --user:#c2410c;
+      --user-soft:#fff5ed;
+      --shadow:0 20px 60px rgba(36,24,48,.10);
     }
-    *{ box-sizing:border-box; }
-    html,body{ margin:0; }
+    *{box-sizing:border-box}
+    html,body{margin:0;min-height:100%}
     body{
-      background:var(--bg); color:var(--text);
+      background:var(--bg);
+      color:var(--text);
       font-family:"Segoe UI Variable Text","Segoe UI",system-ui,-apple-system,BlinkMacSystemFont,sans-serif;
-      line-height:1.55; padding:28px 16px 72px;
-      -webkit-print-color-adjust:exact; print-color-adjust:exact;
+      padding:84px 18px 72px;
+      -webkit-print-color-adjust:exact;
+      print-color-adjust:exact;
     }
     .bar{
-      position:fixed; top:0; left:0; right:0; z-index:5;
-      display:flex; justify-content:center; gap:10px; padding:12px;
-      background:rgba(255,255,255,.92); border-bottom:1px solid var(--border);
+      position:fixed;top:0;left:0;right:0;z-index:20;
+      display:flex;justify-content:center;gap:10px;padding:12px 16px;
+      background:rgba(255,255,255,.94);backdrop-filter:blur(10px);
+      border-bottom:1px solid var(--border);
     }
     .bar button{
-      border:1px solid var(--primary); background:var(--primary); color:#fff;
-      font:inherit; font-weight:700; font-size:14px; padding:9px 16px; border-radius:11px; cursor:pointer;
+      appearance:none;border:1px solid var(--primary);background:var(--primary);color:#fff;
+      font:700 14px/1.2 inherit;padding:10px 17px;border-radius:11px;cursor:pointer;
     }
-    .bar button.ghost{ background:var(--surface); color:var(--primary); }
-    .wrap{ max-width:780px; margin:60px auto 0; }
-    .conv{ margin:0 auto 34px; }
-    .conv h1{
-      background:linear-gradient(135deg,var(--hero-start),var(--hero-end)); color:#fff;
-      margin:0; padding:18px 22px; border-radius:16px 16px 0 0; font-size:22px;
+    .bar button.ghost{background:#fff;color:var(--primary)}
+    .bar button:disabled{opacity:.5;cursor:not-allowed}
+    .document{max-width:850px;margin:0 auto}
+    .conversation{
+      background:var(--paper);border:1px solid var(--border);border-radius:20px;
+      box-shadow:var(--shadow);overflow:hidden;margin:0 0 28px;
     }
-    .meta{
-      margin:0 0 20px; padding:10px 22px; background:var(--surface);
-      border:1px solid var(--border); border-top:0; border-radius:0 0 16px 16px;
-      color:var(--muted); font-size:13px;
+    .conversation-header{
+      padding:26px 30px 22px;
+      border-bottom:1px solid var(--border);
+      background:linear-gradient(135deg,#faf8ff 0%,#fff 55%,#fff9f5 100%);
     }
-    .thread{ display:flex; flex-direction:column; gap:14px; }
-    .row{
-      max-width:86%; padding:12px 15px; border-radius:16px;
-      border:1px solid var(--border); background:var(--surface);
+    .brandline{
+      display:flex;align-items:center;gap:8px;margin:0 0 10px;
+      color:var(--primary);font-size:11px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;
     }
-    .row.user{ margin-left:auto; background:var(--accent-soft); border-color:var(--accent-border); border-bottom-right-radius:5px; }
-    .row.assistant{ margin-right:auto; background:var(--primary-soft); border-color:var(--primary-border); border-bottom-left-radius:5px; }
-    .who{ font-size:11px; font-weight:800; letter-spacing:.5px; text-transform:uppercase; margin-bottom:5px; }
-    .row.user .who{ color:#c2410c; }
-    .row.assistant .who{ color:var(--primary); }
-    .msg{ font-size:14.5px; white-space:pre-wrap; word-break:break-word; }
-    .msg:empty{ display:none; }
-    .imgs{ display:flex; flex-direction:column; gap:8px; margin-top:8px; }
-    .imgs img{ max-width:100%; height:auto; border-radius:12px; border:1px solid var(--border); display:block; }
-    .foot{ text-align:center; color:var(--muted); font-size:12px; margin-top:26px; }
+    .brandmark{width:8px;height:8px;border-radius:999px;background:var(--primary);display:inline-block}
+    .conversation-title{margin:0;font-size:25px;line-height:1.2;letter-spacing:-.02em;overflow-wrap:anywhere}
+    .meta{display:flex;flex-wrap:wrap;gap:7px;margin-top:14px}
+    .meta-chip{
+      display:inline-flex;align-items:center;min-height:27px;padding:5px 9px;border-radius:999px;
+      border:1px solid var(--border);background:#fff;color:var(--muted);font-size:11.5px;font-weight:650;
+    }
+    .messages{padding:8px 30px 22px}
+    .message{position:relative;padding:20px 0 20px 18px;border-bottom:1px solid #ece8f0}
+    .message:last-child{border-bottom:0}
+    .message::before{content:"";position:absolute;left:0;top:20px;bottom:20px;width:3px;border-radius:3px;background:var(--primary)}
+    .message.user::before{background:var(--user)}
+    .message-head{display:flex;align-items:center;gap:9px;margin-bottom:8px}
+    .role-badge{
+      display:inline-flex;align-items:center;padding:5px 9px;border-radius:8px;
+      background:var(--primary-soft);color:var(--primary);font-size:10.5px;font-weight:850;letter-spacing:.07em;text-transform:uppercase;
+    }
+    .message.user .role-badge{background:var(--user-soft);color:var(--user)}
+    .role-detail{color:var(--muted);font-size:11px;font-weight:600}
+    .message-text{
+      margin:0;font-size:11.2pt;line-height:1.56;white-space:pre-wrap;overflow-wrap:anywhere;word-break:break-word;
+    }
+    .message-placeholder{color:var(--muted);font-style:italic}
+    .attachment-list{display:flex;flex-wrap:wrap;gap:7px;margin-top:10px}
+    .attachment{
+      border:1px dashed #cfc6d9;border-radius:9px;background:#faf9fb;color:var(--muted);
+      padding:6px 9px;font-size:10.5px;font-weight:650;overflow-wrap:anywhere;
+    }
+    .conversation-footer{
+      display:flex;justify-content:space-between;gap:12px;padding:11px 30px 13px;
+      border-top:1px solid var(--border);color:var(--muted);font-size:9.5px;
+    }
+    .empty{
+      max-width:850px;margin:0 auto;background:#fff;border:1px solid var(--border);border-radius:16px;
+      padding:28px;text-align:center;color:var(--muted);
+    }
 
-    @page{ size:A4; margin:14mm; }
+    @page{size:A4;margin:14mm 14mm 16mm}
     @media print{
-      body{ background:#fff; padding:0; -webkit-print-color-adjust:exact; print-color-adjust:exact; }
-      .bar{ display:none; }
-      .wrap{ margin-top:0; max-width:none; }
-      .row{ break-inside:avoid; }
-      .conv{ break-inside:auto; }
-      .imgs img{ break-inside:avoid; }
+      body{background:#fff;padding:0}
+      .bar{display:none}
+      .document{max-width:none;margin:0}
+      .conversation{border:0;border-radius:0;box-shadow:none;overflow:visible;margin:0}
+      .conversation + .conversation{break-before:page}
+      .conversation-header{padding:0 0 18px;background:#fff;border-bottom:1px solid #cbc4d4}
+      .conversation-title{font-size:21pt}
+      .messages{padding:6px 0 10px}
+      .message{padding:15px 0 15px 16px}
+      .message::before{top:15px;bottom:15px}
+      .message-head{break-after:avoid}
+      .role-badge,.meta-chip,.attachment{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+      .message-text{font-size:10.6pt;line-height:1.48}
+      .conversation-footer{padding:10px 0 0;font-size:8.5pt}
     }
   </style>
 </head>
@@ -72,7 +114,7 @@
     <button id="printBtn" type="button">Salvar como PDF</button>
     <button id="closeBtn" class="ghost" type="button">Fechar</button>
   </div>
-  <div class="wrap" id="doc"></div>
+  <main class="document" id="document"></main>
   <script src="scripts/print-view.js"></script>
 </body>
 </html>

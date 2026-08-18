@@ -58,7 +58,14 @@
     for (const im of all) im.data = cache.get(im.src) || null;
   }
 
-  function findScroller() {
+  function findScroller(adapter) {
+    // Sites como o ChatGPT podem ter mais de uma área rolável (ex.: sidebar + conversa).
+    // Dê ao adapter a chance de apontar o scroller sem depender do tamanho do elemento.
+    try {
+      const preferred = adapter?.scroller?.();
+      if (preferred) return preferred;
+    } catch (_) {}
+
     let best = null, bestH = 0;
     for (const el of document.querySelectorAll("main *, body > div *")) {
       const st = getComputedStyle(el);
@@ -88,6 +95,20 @@
     chatgpt: {
       match: (h) => /(^|\.)chatgpt\.com$|(^|\.)chat\.openai\.com$/.test(h),
       label: "ChatGPT",
+      scroller() {
+        // O scroll correto da conversa é o data-scroll-root que contém #thread.
+        // Isso evita selecionar o scroll da barra lateral, que também é rolável.
+        const thread = document.querySelector("#thread");
+        const threadRoot = thread?.closest("[data-scroll-root]");
+        if (threadRoot && visible(threadRoot)) return threadRoot;
+
+        const turn = document.querySelector('[data-testid^="conversation-turn"]');
+        const turnRoot = turn?.closest("[data-scroll-root]");
+        if (turnRoot && visible(turnRoot)) return turnRoot;
+
+        return [...document.querySelectorAll("[data-scroll-root]")]
+          .find((el) => visible(el) && (el.querySelector("#thread") || el.querySelector('[data-testid^="conversation-turn"]'))) || null;
+      },
       items() {
         const turns = [...document.querySelectorAll('[data-testid^="conversation-turn"]')];
         if (turns.length) {
@@ -231,7 +252,7 @@
       const a = currentAdapter();
       if (!a) return { ok: false, reason: "unsupported" };
 
-      const sc = findScroller();
+      const sc = findScroller(a);
       const map = new Map();
       let order = 0;
       const harvest = () => {
